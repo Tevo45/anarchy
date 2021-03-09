@@ -1,0 +1,79 @@
+cabal-version: 1.12
+
+-- This file has been generated from package.yaml by hpack version 0.33.0.
+--
+-- see: https://github.com/sol/hpack
+--
+-- hash: 1edee12ff75b87c9936a4268f280bad3ce8698088d7361be1f47ceb15b8405bd
+
+name:           anarchy
+version:        0.1.0.0
+description:    Please see the README on GitHub at <https://github.com/githubuser/anarchy#readme>
+homepage:       https://github.com/Tevo45/anarchy#readme
+bug-reports:    https://github.com/Tevo45/anarchy/issues
+author:         Estevan Castilho (Tevo45)
+maintainer:     estevan.cps@gmail.com
+copyright:      2021 Estevan Castilho
+license:        MIT
+license-file:   LICENSE
+build-type:     Simple
+extra-source-files:
+    README.md
+    ChangeLog.md
+
+source-repository head
+  type: git
+  location: https://github.com/Tevo45/anarchy
+
+library
+  exposed-modules:
+      LCU
+  other-modules:
+      Paths_anarchy
+  hs-source-dirs:
+      core
+  build-depends:
+      base >=4.7 && <5
+    , base64
+    , bytestring
+    , connection
+    , filepath
+    , http-client
+    , http-client-tls
+    , process
+    , regex-pcre-builtin
+    , req
+    , split
+    , text
+    , transformers
+    , utf8-string
+    , websockets
+    , wuss
+  default-language: Haskell2010
+
+executable anarchy-cli
+  main-is: Main.hs
+  other-modules:
+      Paths_anarchy
+  hs-source-dirs:
+      app-cli
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  build-depends:
+      anarchy
+    , base >=4.7 && <5
+    , base64
+    , bytestring
+    , connection
+    , filepath
+    , http-client
+    , http-client-tls
+    , process
+    , regex-pcre-builtin
+    , req
+    , split
+    , text
+    , transformers
+    , utf8-string
+    , websockets
+    , wuss
+  default-language: Haskell2010
