@@ -36,6 +36,7 @@ dependencies:
 - websockets
 - wuss
 - base64
+- aeson
 
 library:
   source-dirs: core
@@ -44,9 +45,12 @@ executables:
   anarchy-cli:
     main:                Main.hs
     source-dirs:         app-cli
+    extensions:
+    - Safe
     ghc-options:
     - -threaded
     - -rtsopts
     - -with-rtsopts=-N
+    - -O2
     dependencies:
     - anarchy
