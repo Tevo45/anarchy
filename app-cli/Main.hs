@@ -3,7 +3,10 @@ module Main where
 
 import LCU
 
+import Anarchy
+
 import qualified Data.Text as T
+import qualified Data.Text.IO as TIO
 import Data.Maybe
 
 import Network.WebSockets.Connection
@@ -15,7 +18,8 @@ logEvents lf = runLcuWsClient lf $ \conn -> do
     sendTextData conn ("[5, \"OnJsonApiEvent\"]" :: T.Text)
     forever $ do
       msg <- receiveData conn
-      print (msg :: T.Text)
+      TIO.putStrLn $ (msg :: T.Text)
 
 main :: IO ()
-main = fromJust <$> runMaybeT loadClientLockfile >>= logEvents
+main = runAutorune
+--main = fromJust <$> runMaybeT loadClientLockfile >>= logEvents
