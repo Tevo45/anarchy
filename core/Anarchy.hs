@@ -211,11 +211,19 @@ runAutorune confRef = do
     auth <- clientAuth
     arState <- newMVar Unhandled
     putStrLn "Almost there!"
-    runLcuWsClient auth $ listenForEvents [( "/lol-champ-select/v1/session"
+    runLcuWsClient auth $ listenForEvents [( champSelect
                                            , Just "Update"
                                            , handleChampSelect confRef arState auth
+                                           )
+                                          ,( champSelect
+                                           , Just "Delete"
+                                           , \_ -> do
+                                               swapMVar arState Unhandled
+                                               return ()
                                            )]
   where
+    champSelect = "/lol-champ-select/v1/session"
+    
     clientAuth :: IO AuthInfo
     clientAuth = do
       r <- runMaybeT getClientAuthInfo
