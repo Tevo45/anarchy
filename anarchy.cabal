@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 7e025b8ff4d07557cac5b16c2729ecd9e20a67532b950b831651bedf8c84c65e
+-- hash: 467cbbd386c327234a86465dc6e85b8215349daf8ae28d37fac6929c0974abdb
 
 name:           anarchy
 version:        0.1.0.0
@@ -31,6 +31,7 @@ library
       Anarchy.LCU
       Anarchy.Providers
       Anarchy.Providers.Dummy
+      Anarchy.State
   other-modules:
       Paths_anarchy
   hs-source-dirs:
