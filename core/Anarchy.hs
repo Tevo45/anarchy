@@ -24,6 +24,7 @@ import Control.Monad.Morph
 import Control.Monad.IO.Class
 import Control.Monad
 import Control.Applicative
+import Control.Concurrent.Chan
 import Control.Concurrent
 import Control.Exception
 import Control.Concurrent.MVar
@@ -159,11 +160,12 @@ handleAutorune auth champ ps = rs >>= \runes -> do
           in map fromJust <$> bs
 
 handleChampSelect :: IORef AnarchyConfig
+                  -> Chan UIMessage
                   -> MVar AutoRuneState
                   -> AuthInfo
                   -> Object
                   -> IO ()
-handleChampSelect confRef stateVar auth obj = do
+handleChampSelect confRef ui stateVar auth obj = do
     sequence $ callAutorune <$> champId
     return ()
   where
@@ -185,11 +187,12 @@ handleChampSelect confRef stateVar auth obj = do
             Unhandled | champ /= 0 -> do
               case sequence $
                 map (fmap providerFunction . flip lookup providers) eProviders of
-                Nothing -> do -- One of the providers is unknown
-                  putStrLn "Some provider is unknown." -- TODO raise condition on UI
+                Nothing -> do
+                  writeChan ui $ ARError "Some provider is unknown."
                   return state
                 Just ps -> do
-                  handleAutorune auth champ ps -- TODO UI notification
+                  (route, rune) <- handleAutorune auth champ ps
+                  writeChan ui $ PickedRune champ route rune
                   return $ Handled champ
             Handled old | old /= champ -> do
                   handleState Unhandled
@@ -215,20 +218,21 @@ listenForEvents ls conn = do
         fs = map (\(_, _, f) -> f eData) es
         
 
-runAutorune :: IORef AnarchyConfig -> IO ()
-runAutorune confRef = do
-    putStrLn "Trying my best."
+runAutorune :: IORef AnarchyConfig -> Chan UIMessage -> IO ()
+runAutorune confRef uiChan = do
+    writeChan uiChan LCUConnecting
     auth <- clientAuth
     arState <- newMVar Unhandled
-    putStrLn "Almost there!"
+    writeChan uiChan LCUConnected
     runLcuWsClient auth $ listenForEvents [( champSelect
                                            , Just "Update"
-                                           , handleChampSelect confRef arState auth
+                                           , handleChampSelect confRef uiChan arState auth
                                            )
                                           ,( champSelect
                                            , Just "Delete"
                                            , \_ -> do
                                                swapMVar arState Unhandled
+                                               writeChan uiChan OutOfChampSelect
                                                return ()
                                            )]
   where
