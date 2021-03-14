@@ -45,7 +45,7 @@ data AuthInfo = AuthInfo { apiPort :: Int
                          } deriving Show
 
 firstMatch :: String -> String -> Maybe String
-firstMatch regex str = str =~~ regex >>= (Just . (!!1) . head)
+firstMatch regex str = ((!!1) . head) <$> str =~~ regex
 
 getClientPath :: MaybeT IO String
 getClientPath = MaybeT $ firstMatch regex <$> readCreateProcess proc []
