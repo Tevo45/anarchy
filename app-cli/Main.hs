@@ -1,25 +1,27 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Main where
 
-import LCU
-
 import Anarchy
+import Anarchy.State
 
-import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
+import Data.IORef
 import Data.Maybe
 
-import Network.WebSockets.Connection
-
+import Control.Concurrent
+import Control.Monad.IO.Class
 import Control.Monad
-import Control.Monad.Trans.Maybe
 
-logEvents lf = runLcuWsClient lf $ \conn -> do
-    sendTextData conn ("[5, \"OnJsonApiEvent\"]" :: T.Text)
+-- TODO command line arguments, etc etc
+main = do
+    conf <- newIORef $ AnarchyConfig ["dummy"]
+    chan <- newChan
+    forkIO . forever $ runAutorune conf chan
     forever $ do
-      msg <- receiveData conn
-      TIO.putStrLn $ (msg :: T.Text)
-
-main :: IO ()
-main = runAutorune
---main = fromJust <$> runMaybeT loadClientLockfile >>= logEvents
+        msg <- readChan chan
+        case msg of
+          LCUConnecting -> putStrLn "Trying my best."
+          LCUConnected -> putStrLn "Almost there!"
+          ARError e -> putStrLn $ "Error: "++e
+          PickedRune champ _ rune ->
+            putStrLn $ "Picked rune " ++ show rune ++ " for champ " ++ show champ ++ "."
+          OutOfChampSelect -> putStrLn "Out of champ selection screen."
