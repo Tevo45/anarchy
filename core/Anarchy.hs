@@ -18,6 +18,7 @@ import Network.WebSockets.Connection
 import Network.HTTP.Req
 
 import Control.Monad.Trans.Maybe
+import Control.Monad.Trans.Class
 import Control.Monad
 import Control.Applicative
 import Control.Concurrent
@@ -112,29 +113,34 @@ instance FromJSON EventPayload where
 type URI = String
 type Action = String
 
-getSuitablePage :: AuthInfo -> Req RunePage
+getSuitablePage :: AuthInfo -> MaybeT Req RunePage
 getSuitablePage auth = do
-    allR <- lcuReq auth GET "/lol-perks/v1/pages" NoReqBody jsonResponse mempty
-    curR <- lcuReq auth GET "/lol-perks/v1/currentpage" NoReqBody jsonResponse mempty
-    let all = fromJust $ responseBody allR -- FIXME don't use fromJust ofc
-        cur = fromJust $ responseBody curR
-        ours = filter ((=~ ("Anarchy: .*" :: String)) . pageName) all
-    if not $ null ours
-      then return $ head ours -- there's already a page named "Anarchy: .*", reuse that
-      else return $ cur -- FIXME pick the first available
+    all <- lcuGet "/lol-perks/v1/pages"
+    cur <- lcuGet "/lol-perks/v1/currentpage"
+    let ours = filter ((=~ ("Anarchy: .*" :: String)) . pageName) all
+    return $ if not $ null ours
+      then head ours -- there's already a page named "Anarchy: .*", reuse that
+      else cur -- FIXME pick the first available
+  where
+    lcuGet :: FromJSON a => T.Text -> MaybeT Req a
+    lcuGet e =
+      MaybeT $ responseBody <$> lcuReq auth GET e NoReqBody jsonResponse mempty
 
 setCurrentRune :: AuthInfo -> Rune -> IO ()
 setCurrentRune auth rune = do
-  conf <- lcuHttpConfig
-  runReq conf $ do
-    target <- getSuitablePage auth
-    lcuReq auth PUT ("/lol-perks/v1/pages/" <> (T.pack . show $ pageId target)) --bad
-           (ReqBodyJson target { pageName = "Anarchy: Haskell :D"
-                               , pageRune = rune
-                               })
-           bsResponse mempty
-    lcuReq auth PUT "/lol-perks/v1/currentpage" (ReqBodyJson $ pageId target)
-           bsResponse mempty
+    conf <- lcuHttpConfig
+    -- we could propagate failure to the callers, for showing something
+    -- in the ui or something (?)
+    runReq conf . runMaybeT $ do
+      target <- getSuitablePage auth
+      lift $ do
+        lcuReq auth PUT ("/lol-perks/v1/pages/" <> (T.pack . show $ pageId target)) --bad
+          (ReqBodyJson target { pageName = "Anarchy: Haskell"
+                              , pageRune = rune
+                              })
+          bsResponse mempty
+        lcuReq auth PUT "/lol-perks/v1/currentpage" (ReqBodyJson $ pageId target)
+          bsResponse mempty
     return ()
 
 handleAutorune :: AuthInfo -> Champion -> [Provider] -> IO (Maybe Route, Rune)
