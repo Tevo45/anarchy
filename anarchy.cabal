@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 467cbbd386c327234a86465dc6e85b8215349daf8ae28d37fac6929c0974abdb
+-- hash: e6b5fae99cdb1f6b40405c36bdf0268c81e3b596c7cf512659a051f1a32fe9c0
 
 name:           anarchy
 version:        0.1.0.0
@@ -28,6 +28,7 @@ source-repository head
 library
   exposed-modules:
       Anarchy
+      Anarchy.DataDragon
       Anarchy.LCU
       Anarchy.Providers
       Anarchy.Providers.Dummy
@@ -42,9 +43,11 @@ library
     , base64
     , bytestring
     , connection
+    , containers
     , filepath
     , http-client
     , http-client-tls
+    , mmorph
     , process
     , regex-pcre-builtin
     , req
@@ -70,9 +73,11 @@ executable anarchy-cli
     , base64
     , bytestring
     , connection
+    , containers
     , filepath
     , http-client
     , http-client-tls
+    , mmorph
     , process
     , regex-pcre-builtin
     , req

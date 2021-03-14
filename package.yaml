@@ -37,6 +37,8 @@ dependencies:
 - wuss
 - base64
 - aeson
+- containers
+- mmorph
 
 library:
   source-dirs: core

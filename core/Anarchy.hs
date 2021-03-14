@@ -1,6 +1,7 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, DeriveGeneric #-}
 module Anarchy where
 
+import Anarchy.DataDragon
 import Anarchy.State
 import Anarchy.LCU
 import Anarchy.Providers
@@ -19,6 +20,8 @@ import Network.HTTP.Req
 
 import Control.Monad.Trans.Maybe
 import Control.Monad.Trans.Class
+import Control.Monad.Morph
+import Control.Monad.IO.Class
 import Control.Monad
 import Control.Applicative
 import Control.Concurrent
@@ -116,26 +119,27 @@ type Action = String
 getSuitablePage :: AuthInfo -> MaybeT Req RunePage
 getSuitablePage auth = do
     all <- lcuGet "/lol-perks/v1/pages"
-    cur <- lcuGet "/lol-perks/v1/currentpage"
     let ours = filter ((=~ ("Anarchy: .*" :: String)) . pageName) all
     return $ if not $ null ours
       then head ours -- there's already a page named "Anarchy: .*", reuse that
-      else cur -- FIXME pick the first available
+      else head $ filter pageIsEditable all -- otherwise pick first modifiable page
   where
     lcuGet :: FromJSON a => T.Text -> MaybeT Req a
     lcuGet e =
       MaybeT $ responseBody <$> lcuReq auth GET e NoReqBody jsonResponse mempty
 
-setCurrentRune :: AuthInfo -> Rune -> IO ()
-setCurrentRune auth rune = do
+setCurrentRune :: AuthInfo -> Champion -> Rune -> IO ()
+setCurrentRune auth champ rune = do
     conf <- lcuHttpConfig
     -- we could propagate failure to the callers, for showing something
     -- in the ui or something (?)
     runReq conf . runMaybeT $ do
+      champName <- hoist liftIO $
+        getChampNameByKey (DDCDN riotCdnUrl "en_US" "11.5.1") champ -- FIXME
       target <- getSuitablePage auth
       lift $ do
         lcuReq auth PUT ("/lol-perks/v1/pages/" <> (T.pack . show $ pageId target)) --bad
-          (ReqBodyJson target { pageName = "Anarchy: Haskell"
+          (ReqBodyJson target { pageName = "Anarchy: " ++ T.unpack champName
                               , pageRune = rune
                               })
           bsResponse mempty
@@ -146,7 +150,7 @@ setCurrentRune auth rune = do
 handleAutorune :: AuthInfo -> Champion -> [Provider] -> IO (Maybe Route, Rune)
 handleAutorune auth champ ps = rs >>= \runes -> do
     let (route, rune) = head runes -- FIXME
-    setCurrentRune auth rune
+    setCurrentRune auth champ rune
     return (route, rune)
   where
     rs :: IO [(Maybe Route, Rune)]
