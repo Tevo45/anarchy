@@ -227,7 +227,7 @@ listenForEvents ls conn = do
 runAutorune :: IORef AnarchyConfig -> Chan UIMessage -> IO ()
 runAutorune confRef uiChan = do
     writeChan uiChan LCUConnecting
-    auth <- clientAuth
+    auth <- clientAuth 5000000
     arState <- newMVar Unhandled
     writeChan uiChan LCUConnected
     runLcuWsClient auth $ listenForEvents [( champSelect
@@ -244,11 +244,12 @@ runAutorune confRef uiChan = do
   where
     champSelect = "/lol-champ-select/v1/session"
     
-    clientAuth :: IO AuthInfo
-    clientAuth = do
+    clientAuth :: Int -> IO AuthInfo
+    clientAuth delay = do
       r <- runMaybeT getClientAuthInfo
       case r of
         Just auth -> return auth
         Nothing -> do
-          threadDelay 5000000
-          clientAuth
+          writeChan uiChan $ LCUConnectRetry delay
+          threadDelay delay
+          clientAuth delay

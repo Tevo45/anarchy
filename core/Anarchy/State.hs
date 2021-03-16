@@ -11,6 +11,7 @@ data AnarchyConfig = AnarchyConfig { enabledRuneProviders :: [String]
 
 data UIMessage = PickedRune Champion (Maybe Route) Rune
                | LCUConnecting
+               | LCUConnectRetry Int
                | LCUConnected
                | OutOfChampSelect
                | ARError String -- FIXME improve error handling

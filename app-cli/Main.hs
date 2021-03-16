@@ -20,6 +20,9 @@ main = do
         msg <- readChan chan
         case msg of
           LCUConnecting -> putStrLn "Trying my best."
+          LCUConnectRetry n ->
+            putStrLn $ "Connection failed, trying again in " ++
+                       (show $ n `div` 1000000) ++ "s"
           LCUConnected -> putStrLn "Almost there!"
           ARError e -> putStrLn $ "Error: "++e
           PickedRune champ _ rune ->
