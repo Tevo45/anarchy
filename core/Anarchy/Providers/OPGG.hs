@@ -1,6 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Anarchy.Providers.OPGG
-  () where
+  (opggProvider) where
 
 import Anarchy.Providers
 import Anarchy.DataDragon

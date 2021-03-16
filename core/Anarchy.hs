@@ -6,6 +6,7 @@ import Anarchy.State
 import Anarchy.LCU
 import Anarchy.Providers
 import Anarchy.Providers.Dummy
+import Anarchy.Providers.OPGG
 
 import qualified Data.Text as T
 import Data.Aeson
@@ -44,7 +45,12 @@ providers :: [(String, ProviderMeta)]
 providers = [("dummy", ProviderMeta { interfaceName = "Dummy"
                                     , description = "Useless provider"
                                     , providerFunction = dummyProvider
-                                    })]
+                                    })
+            ,("op.gg", ProviderMeta { interfaceName = "OP.GG"
+                                    , description = "Scrape runes from OP.GG"
+                                    , providerFunction = opggProvider
+                                    })
+            ]
 
 data EventPayload = Payload { eventData :: Object
                             , eventType :: String
