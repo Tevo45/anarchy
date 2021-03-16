@@ -39,6 +39,8 @@ dependencies:
 - aeson
 - containers
 - mmorph
+- scalpel
+- sort
 
 library:
   source-dirs: core

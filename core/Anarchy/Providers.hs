@@ -7,6 +7,8 @@ module Anarchy.Providers
 
 import Control.Monad.Trans.Maybe
 
+-- TODO figure out provider configuration
+
 data Route = Top | Middle | Bottom | Support | Jungle
              deriving (Show, Eq)
 

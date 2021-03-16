@@ -1,3 +1,4 @@
+-- Hypocrisy!
 module Anarchy.State
   ( AnarchyConfig(..)
   , UIMessage(..)

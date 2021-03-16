@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e6b5fae99cdb1f6b40405c36bdf0268c81e3b596c7cf512659a051f1a32fe9c0
+-- hash: 9be4f1df33dcce54a4cbc6d2e1fcc75fae92cdaf57c45300e657a962504bf1aa
 
 name:           anarchy
 version:        0.1.0.0
@@ -32,6 +32,7 @@ library
       Anarchy.LCU
       Anarchy.Providers
       Anarchy.Providers.Dummy
+      Anarchy.Providers.OPGG
       Anarchy.State
   other-modules:
       Paths_anarchy
@@ -51,6 +52,8 @@ library
     , process
     , regex-pcre-builtin
     , req
+    , scalpel
+    , sort
     , split
     , text
     , transformers
@@ -81,6 +84,8 @@ executable anarchy-cli
     , process
     , regex-pcre-builtin
     , req
+    , scalpel
+    , sort
     , split
     , text
     , transformers

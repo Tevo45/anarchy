@@ -13,7 +13,7 @@ import Control.Monad
 
 -- TODO command line arguments, etc etc
 main = do
-    conf <- newIORef $ AnarchyConfig ["dummy"]
+    conf <- newIORef $ AnarchyConfig ["op.gg", "dummy"]
     chan <- newChan
     forkIO . forever $ runAutorune conf chan
     forever $ do
