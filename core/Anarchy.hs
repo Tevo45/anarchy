@@ -1,4 +1,11 @@
 {-# LANGUAGE OverloadedStrings, ScopedTypeVariables, DeriveGeneric #-}
+{-|
+Module      : Anarchy
+Description : Ties together backend and frontend communication logic
+Copyright   : (c) Estevan Castilho, 2021
+Maintainer  : estevan.cps@gmail.com
+Portability : Windows, POSIX
+-}
 module Anarchy where
 
 import Anarchy.DataDragon
@@ -30,8 +37,9 @@ import Control.Concurrent
 import Control.Exception
 import Control.Concurrent.MVar
 
-data ProviderMeta = ProviderMeta { interfaceName :: String
-                                 , description :: String
+-- | Metadata about a provider, used in the 'providers' table
+data ProviderMeta = ProviderMeta { interfaceName :: String -- ^ Name to be displayed in the UI
+                                 , description :: String -- ^ Short description
                                  , providerFunction :: Provider
                                  }
 
@@ -40,7 +48,7 @@ instance Show ProviderMeta where
                     , description = desc
                     } = name ++ ": " ++ desc
   
-
+-- | Table containing all known (enabled) providers together with some metadata
 providers :: [(String, ProviderMeta)]
 providers = [("dummy", ProviderMeta { interfaceName = "Dummy"
                                     , description = "Useless provider"
@@ -52,15 +60,19 @@ providers = [("dummy", ProviderMeta { interfaceName = "Dummy"
                                     })
             ]
 
+-- | Represents an LCU WAMP event payload
 data EventPayload = Payload { eventData :: Object
                             , eventType :: String
                             , eventUri  :: String
                             } deriving Show
 
+-- | Auxiliary type representing the current state of the autorune system
 data AutoRuneState = Unhandled | Handled Champion
                    deriving Show
 
 -- TODO we probably don't need all those fields
+-- | Rune page as serialized by the LCU;
+-- note that not all LCU-available fields are represented here
 data RunePage = RunePage { pageIsCurrent :: Bool
                          , pageId :: Integer
                          , pageIsActive :: Bool
@@ -73,6 +85,13 @@ data RunePage = RunePage { pageIsCurrent :: Bool
                          , pageRune :: Rune
                          } deriving Show
 
+-- | 'RunePage' instance with "default values" filled in
+defaultPage :: RunePage
+defaultPage = RunePage False 0 True True True True 0 "" 0 r
+  where
+    r = Rune 0 (0, 0, 0, 0) 0 (0, 0) (0, 0, 0)
+
+-- | Parses part of an LCU rune page object into a 'Rune'
 instance FromJSON Rune where
   parseJSON (Object o) = Rune <$> o .: "primaryStyleId"
                               <*> (t4 <$> perks)
@@ -85,6 +104,7 @@ instance FromJSON Rune where
       t2 (a:b:_) = (a,b)
       perks = o .: "selectedPerkIds"
 
+-- | Parses an LCU rune page into a 'RunePage', including the rune itself
 instance FromJSON RunePage where
   parseJSON (Object o) = RunePage <$> o .: "current"
                                   <*> o .: "id"
@@ -97,6 +117,7 @@ instance FromJSON RunePage where
                                   <*> o .: "order"
                                   <*> parseJSON (Object o)
 
+-- | Serializes a 'RunePage', including the rune, into an LCU-compatible object
 instance ToJSON RunePage where
   toJSON (RunePage cur pid active del edit valid lastMod name order rune) =
     object [ "current" .= cur
@@ -115,6 +136,7 @@ instance ToJSON RunePage where
     where
       (Rune primary (p1, p2, p3, p4) secondary (s1, s2) (f1, f2, f3)) = rune
 
+-- | Parses an LCU WAMP event payload object into an 'EventPayload'
 instance FromJSON EventPayload where
   parseJSON = withObject "Payload" $ \v -> Payload <$> v .: "data"
                                                    <*> v .: "eventType"
@@ -123,18 +145,27 @@ instance FromJSON EventPayload where
 type URI = String
 type Action = String
 
+-- | Queries the LCU for pages and returns either a page named @Anarchy: .*@
+-- or the first modifiable page available; 'Nothing' if both are unavailable 
 getSuitablePage :: AuthInfo -> MaybeT Req RunePage
 getSuitablePage auth = do
     all <- lcuGet "/lol-perks/v1/pages"
     let ours = filter ((=~ ("Anarchy: .*" :: String)) . pageName) all
-    return $ if not $ null ours
-      then head ours -- there's already a page named "Anarchy: .*", reuse that
-      else head $ filter pageIsEditable all -- otherwise pick first modifiable page
+    case ours of
+      []    -> MaybeT . return . safeHead $ filter pageIsEditable all
+      (x:_) -> return $ head ours
   where
+    safeHead :: [a] -> Maybe a
+    safeHead [] = Nothing
+    safeHead (x:_) = Just x
+    
     lcuGet :: FromJSON a => T.Text -> MaybeT Req a
     lcuGet e =
       MaybeT $ responseBody <$> lcuReq auth GET e NoReqBody jsonResponse mempty
 
+-- | Sets the rune on a runepage returned by 'getSuitablePage' (or creates a
+-- new one, if 'Nothing') to the 'Rune' and name @Anarchy: 'champName'@ where
+-- @'champName'@ is the name of the 'Champion' returned by a Data Dragon query
 setCurrentRune :: AuthInfo -> Champion -> Rune -> IO ()
 setCurrentRune auth champ rune = do
     conf <- lcuHttpConfig
@@ -143,20 +174,48 @@ setCurrentRune auth champ rune = do
     runReq conf . runMaybeT $ do
       champName <- hoist liftIO $
         getChampNameByKey (DDCDN riotCdnUrl "en_US" "11.5.1") champ -- FIXME
-      target <- getSuitablePage auth
-      lift $ do
-        lcuReq auth PUT ("/lol-perks/v1/pages/" <> (T.pack . show $ pageId target)) --bad
-          (ReqBodyJson target { pageName = "Anarchy: " ++ T.unpack champName
-                              , pageRune = rune
-                              })
-          bsResponse mempty
-        lcuReq auth PUT "/lol-perks/v1/currentpage" (ReqBodyJson $ pageId target)
-          bsResponse mempty
+      page <- lift . runMaybeT $ getSuitablePage auth
+      let name = "Anarchy: " ++ T.unpack champName
+      pid <- case page of
+               Just target ->
+                 lift . reusePage $ target { pageName = name
+                                           , pageRune = rune
+                                           }
+               Nothing ->
+                 newPage $ defaultPage { pageName = name
+                                       , pageRune = rune
+                                       }
+      lift $ setCurrentPage pid
     return ()
+  where
+    setCurrentPage :: Integer -> Req ()
+    setCurrentPage pid =
+      lcuReq auth PUT "/lol-perks/v1/currentpage" (ReqBodyJson pid)
+        bsResponse mempty
+      >> return ()
 
+    -- untested
+    newPage :: RunePage -> MaybeT Req Integer
+    newPage p = do
+      page <- lift $ lcuReq auth PUT "/lol-perks/v1/pages"
+        (ReqBodyJson p) jsonResponse mempty
+      return . pageId $ responseBody page
+      
+    reusePage :: RunePage -> Req Integer
+    reusePage target =
+      lcuReq auth PUT ("/lol-perks/v1/pages/" <> (T.pack $ show pid))
+        (ReqBodyJson target)
+        bsResponse mempty
+      >> return pid
+      where
+        pid = pageId target
+
+-- FIXME take route into consideration (if available)
+-- | Attempts to set the ideal runeset for 'Champion' based on answers
+-- from a list of 'Provider's, returning the choosen 'Rune' and 'Route'
 handleAutorune :: AuthInfo -> Champion -> [Provider] -> IO (Maybe Route, Rune)
 handleAutorune auth champ ps = rs >>= \runes -> do
-    let (route, rune) = head runes -- FIXME
+    let (route, rune) = head runes -- FIXME better heuristics for multiple providers
     setCurrentRune auth champ rune
     return (route, rune)
   where
@@ -165,9 +224,14 @@ handleAutorune auth champ ps = rs >>= \runes -> do
              bs = filter (not . null) <$> as
           in map fromJust <$> bs
 
+-- | Receives LCU champ selection events and decides when to call 'handleAutorune',
+-- also takes care of notifying the user interface of state changes.
 handleChampSelect :: IORef AnarchyConfig
+                  -- ^ Contains shared application-wide configuration
                   -> Chan UIMessage
+                  -- ^ Communication channel with user interface
                   -> MVar AutoRuneState
+                  -- ^ Used internally for synchronization and state-keeping
                   -> AuthInfo
                   -> Object
                   -> IO ()
