@@ -38,8 +38,10 @@ import Control.Exception
 import Control.Concurrent.MVar
 
 -- | Metadata about a provider, used in the 'providers' table
-data ProviderMeta = ProviderMeta { interfaceName :: String -- ^ Name to be displayed in the UI
-                                 , description :: String -- ^ Short description
+data ProviderMeta = ProviderMeta { interfaceName :: String
+                                 -- ^ Name to be displayed in the UI
+                                 , description :: String
+                                 -- ^ Short description
                                  , providerFunction :: Provider
                                  }
 
@@ -268,7 +270,13 @@ handleChampSelect confRef ui stateVar auth obj = do
                   handleState Unhandled
             _ -> return state
 
-listenForEvents :: [(URI, Maybe Action, Object -> IO ())] -> Connection -> IO ()
+-- | Listens for LCU WAMP events and calls the appropriate functions
+listenForEvents :: [(URI, Maybe Action, Object -> IO ())]
+                -- ^ List of functions to be called for events at
+                -- specified 'URI' and 'Action'
+                -> Connection
+                -- ^ Websocket 'Connection' to the LCU
+                -> IO ()
 listenForEvents ls conn = do
     sendTextData conn ("[5, \"OnJsonApiEvent\"]" :: T.Text)
     forever $ do
@@ -282,29 +290,32 @@ listenForEvents ls conn = do
         sequence fs
         return ()
       where
-        qualifies (uri, action, _) = eUri  == uri &&
-                                     (fromMaybe True $ (== eType) <$> action)
+        qualifies (uri, action, _) =
+          eUri  == uri &&
+          (fromMaybe True $ (== eType) <$> action)
         es = filter qualifies ls
         fs = map (\(_, _, f) -> f eData) es
-        
 
+-- | Attempts to connect to the LCU API and start the autorune system,
+-- returns when client disconnects
 runAutorune :: IORef AnarchyConfig -> Chan UIMessage -> IO ()
 runAutorune confRef uiChan = do
     writeChan uiChan LCUConnecting
     auth <- clientAuth 5000000
     arState <- newMVar Unhandled
     writeChan uiChan LCUConnected
-    runLcuWsClient auth $ listenForEvents [( champSelect
-                                           , Just "Update"
-                                           , handleChampSelect confRef uiChan arState auth
-                                           )
-                                          ,( champSelect
-                                           , Just "Delete"
-                                           , \_ -> do
-                                               swapMVar arState Unhandled
-                                               writeChan uiChan OutOfChampSelect
-                                               return ()
-                                           )]
+    runLcuWsClient auth $
+      listenForEvents [( champSelect
+                       , Just "Update"
+                       , handleChampSelect confRef uiChan arState auth
+                       )
+                      ,( champSelect
+                       , Just "Delete"
+                       , \_ -> do
+                           swapMVar arState Unhandled
+                           writeChan uiChan OutOfChampSelect
+                           return ()
+                       )]
   where
     champSelect = "/lol-champ-select/v1/session"
     
