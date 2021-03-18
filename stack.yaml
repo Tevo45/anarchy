@@ -40,8 +40,22 @@ packages:
 # - acme-missiles-0.3
 # - git: https://github.com/commercialhaskell/stack.git
 #   commit: e7b331f14bcffb8367cd58fbfc8b40ec7642100a
-#
-extra-deps: []
+
+# we need versions newer than what our resolver has because of https://github.com/haskell-gi/haskell-gi/issues/318
+extra-deps:
+- haskell-gi-0.24.7
+- haskell-gi-base-0.24.5
+- gi-atk-2.0.22
+- gi-cairo-1.0.24
+- gi-gdk-3.0.2
+- gi-gdkpixbuf-2.0.24
+- gi-gio-2.0.27
+- gi-glib-2.0.24
+- gi-gobject-2.0.25
+- gi-gtk-3.0.36
+- gi-pango-1.0.23
+- gi-harfbuzz-0.0.3
+- gi-gtk-declarative-0.7.0
 
 # Override default flag values for local packages and extra-deps
 # flags: {}

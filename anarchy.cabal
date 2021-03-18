@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.34.4.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9be4f1df33dcce54a4cbc6d2e1fcc75fae92cdaf57c45300e657a962504bf1aa
+-- hash: 41e039cd80618c95d37820a4d7f9e53110a039deb8546e578b503865047baa1d
 
 name:           anarchy
 version:        0.1.0.0
@@ -46,6 +46,8 @@ library
     , connection
     , containers
     , filepath
+    , gi-gtk
+    , gi-gtk-declarative
     , http-client
     , http-client-tls
     , mmorph
@@ -78,6 +80,42 @@ executable anarchy-cli
     , connection
     , containers
     , filepath
+    , gi-gtk
+    , gi-gtk-declarative
+    , http-client
+    , http-client-tls
+    , mmorph
+    , process
+    , regex-pcre-builtin
+    , req
+    , scalpel
+    , sort
+    , split
+    , text
+    , transformers
+    , utf8-string
+    , websockets
+    , wuss
+  default-language: Haskell2010
+
+executable anarchy-gtk
+  main-is: Main.hs
+  other-modules:
+      Paths_anarchy
+  hs-source-dirs:
+      app-gtk
+  ghc-options: -threaded -rtsopts -with-rtsopts=-N -O2
+  build-depends:
+      aeson
+    , anarchy
+    , base >=4.7 && <5
+    , base64
+    , bytestring
+    , connection
+    , containers
+    , filepath
+    , gi-gtk
+    , gi-gtk-declarative
     , http-client
     , http-client-tls
     , mmorph
